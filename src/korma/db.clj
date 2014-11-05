@@ -1,6 +1,7 @@
 (ns korma.db
   "Functions for creating and managing database specifications."
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string]
             [korma.config :as conf])
   (:import (com.mchange.v2.c3p0 ComboPooledDataSource)))
 
@@ -99,6 +100,15 @@
           :make-pool? make-pool?}
          opts))
 
+(defn map->query-string
+  [o]
+  (if (empty? o)
+    ""
+    (->> o
+         (map (fn [[k v]] (str k "=" v)))
+         (clojure.string/join "&")
+         (str "?"))))
+
 (defn postgres
   "Create a database specification for a postgres database. Opts should include
   keys for :db, :user, and :password. You can also optionally set host and
@@ -128,12 +138,12 @@
   "Create a database specification for a mysql database. Opts should include keys
   for :db, :user, and :password. You can also optionally set host and port.
   Delimiters are automatically set to \"`\"."
-  [{:keys [host port db make-pool?]
-    :or {host "localhost", port 3306, db "", make-pool? true}
+  [{:keys [host port db make-pool? extra]
+    :or {host "localhost", port 3306, db "", make-pool? true, extra {}}
     :as opts}]
   (merge {:classname "com.mysql.jdbc.Driver" ; must be in classpath
           :subprotocol "mysql"
-          :subname (str "//" host ":" port "/" db)
+          :subname (str "//" host ":" port "/" db (map->query-string extra))
           :delimiters "`"
           :make-pool? make-pool?}
          opts))
